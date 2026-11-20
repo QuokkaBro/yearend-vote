@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d2433">
+<title>송년회 투표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{--ink:#1d2433;--sub:#4a5568;--slate:#e8eef5;--line:#c9d3e0;--red:#d7263d;--redbg:#fde8eb;--blue:#1f5fbf;--bluebg:#e6effc;--gold:#f2b705}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:"Pretendard Variable",Pretendard,"Malgun Gothic",sans-serif;background:var(--slate);color:var(--ink);word-break:keep-all;overflow-wrap:anywhere;display:flex;flex-direction:column;min-height:100dvh}
+header{background:var(--ink);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:17px}
+header .me{background:#fff;color:var(--ink);border-radius:99px;padding:4px 12px;font-size:15px;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+main{flex:1;display:flex;flex-direction:column;padding:16px;gap:14px}
+.card{background:#fff;border:3px solid var(--ink);border-radius:18px;padding:22px 18px;text-align:center}
+h1{font-size:30px;line-height:1.25}
+.big{font-size:44px;font-weight:800;line-height:1.15}
+p.lead{font-size:19px;line-height:1.5;color:var(--sub);margin-top:10px}
+label{display:block;font-size:19px;font-weight:700;margin:18px 0 8px;text-align:left}
+input{width:100%;font:inherit;font-size:24px;padding:14px;border:3px solid var(--ink);border-radius:14px;background:#fff}
+input:focus{outline:4px solid var(--gold);outline-offset:2px}
+.go{margin-top:16px;width:100%;font:inherit;font-size:24px;font-weight:800;padding:16px;border:0;border-radius:14px;background:var(--ink);color:#fff}
+.go:disabled{opacity:.4}
+.badge{display:inline-block;background:var(--ink);color:#fff;font-weight:700;font-size:16px;border-radius:99px;padding:5px 14px}
+.badge.gold{background:var(--gold);color:var(--ink)}
+.choices{flex:1;display:flex;flex-direction:column;gap:12px}
+.ch{flex:1;min-height:150px;border:4px solid var(--ink);border-radius:22px;font:inherit;font-size:30px;font-weight:800;line-height:1.25;padding:16px;color:var(--ink);position:relative;transition:transform .12s}
+.ch:active{transform:scale(.97)}
+.ch.a{background:var(--redbg)}
+.ch.b{background:var(--bluebg)}
+.ch .tag{position:absolute;left:14px;top:10px;font-size:18px;font-weight:800;color:#fff;border-radius:99px;padding:2px 12px}
+.ch.a .tag{background:var(--red)} .ch.b .tag{background:var(--blue)}
+.ch.on.a{background:var(--red);color:#fff;border-color:var(--red)}
+.ch.on.b{background:var(--blue);color:#fff;border-color:var(--blue)}
+.ch.on .tag{background:#fff;color:var(--ink)}
+.ch.off{opacity:.45}
+.ch:disabled{opacity:.35}
+.status{font-size:18px;font-weight:700;text-align:center;min-height:26px}
+.status.warn{color:var(--red)}
+.result{font-size:56px;font-weight:900;line-height:1.1}
+.result.alive{color:var(--ink)}
+.result.dead{color:var(--red)}
+.split{display:flex;height:54px;border-radius:12px;overflow:hidden;border:3px solid var(--ink);margin-top:16px;font-weight:800;font-size:20px;color:#fff}
+.split div{display:flex;align-items:center;justify-content:center;min-width:0}
+.split .sa{background:var(--red)} .split .sb{background:var(--blue)}
+.conn{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);background:var(--red);color:#fff;font-weight:700;font-size:15px;border-radius:99px;padding:6px 14px;display:none}
+.small{font-size:15px;color:var(--sub);margin-top:14px;line-height:1.5}
+.small button{font:inherit;background:none;border:0;color:var(--sub);text-decoration:underline}
+</style>
+</head>
+<body>
+<header><span id="ttl">송년회 투표</span><span class="me" id="me" hidden></span></header>
+<main id="app"></main>
+<div class="conn" id="conn">연결이 끊겼어요. 다시 붙는 중…</div>
+<script src="config.js"></script>
+<script src="net.js"></script>
+<script>
+var G = window.GAME;
+document.getElementById("ttl").textContent = G.title;
+function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+var pid = ls("lpv-pid");
+if (!pid) { pid = Math.random().toString(36).slice(2, 7); ls("lpv-pid", pid); }
+var nick = ls("lpv-nick") || "";
+var joinedGame = ls("lpv-joined") || "";
+var myVotes = {}; try { myVotes = JSON.parse(ls("lpv-votes") || "{}"); } catch (e) {}
+var st = null;       // 진행자 화면의 최신 상태
+var sendState = "";
+var app = document.getElementById("app");
+
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+function join() {
+  if (!nick || !st) return;
+  if (joinedGame === st.g) return;
+  joinedGame = st.g; ls("lpv-joined", joinedGame);
+  // 한꺼번에 몰리지 않게 0~3초 사이에 보내요.
+  setTimeout(function () { NET.send(G.voteTopic, { t: "j", g: st.g, p: pid, n: nick }); }, Math.random() * 3000);
+}
+
+function isAlive() { return !st || !st.alive || st.alive.indexOf(pid) >= 0; }
+
+function vote(c) {
+  if (!st || st.phase !== "open") return;
+  if (st.mode === "survival" && !isAlive()) return;
+  var key = st.g + ":" + st.q.id;
+  if (myVotes[key] === c) return;
+  myVotes[key] = c; ls("lpv-votes", JSON.stringify(myVotes));
+  render();
+  NET.send(G.voteTopic, { t: "v", g: st.g, p: pid, n: nick, q: st.q.id, c: c }, function (s) { sendState = s; renderStatus(); });
+}
+
+function renderStatus() {
+  var el = document.getElementById("status"); if (!el) return;
+  el.className = "status";
+  if (sendState === "retry") { el.textContent = "보내는 중… 잠시만요"; el.className = "status warn"; }
+  else if (sendState === "fail") { el.textContent = "못 보냈어요. 다시 눌러 주세요(와이파이를 끄고 데이터로)"; el.className = "status warn"; }
+  else if (sendState === "ok") el.textContent = "보냈어요! 마감 전까지 바꿀 수 있어요";
+  else el.textContent = "";
+}
+
+function nickForm() {
+  app.innerHTML =
+    '<div class="card"><h1>송년회 투표 게임</h1><p class="lead">별명을 정하면 바로 들어가요.<br>실명 말고 별명도 좋아요.</p>' +
+    '<label for="nk">별명 (' + G.nickMax + '자까지)</label><input id="nk" maxlength="' + G.nickMax + '" autocomplete="off" placeholder="예: 고기왕">' +
+    '<button class="go" id="go" disabled>입장하기</button></div>' +
+    '<p class="small">와이파이 대신 <b>휴대폰 데이터</b>로 접속하면 투표가 더 잘 들어가요.</p>';
+  var inp = document.getElementById("nk"), go = document.getElementById("go");
+  inp.value = nick;
+  go.disabled = !inp.value.trim();
+  inp.oninput = function () { go.disabled = !inp.value.trim(); };
+  function enter() {
+    var v = inp.value.trim().slice(0, G.nickMax); if (!v) return;
+    nick = v; ls("lpv-nick", v); joinedGame = ""; join(); render();
+  }
+  go.onclick = enter;
+  inp.onkeydown = function (e) { if (e.key === "Enter") enter(); };
+}
+
+function render() {
+  var me = document.getElementById("me");
+  if (!nick) { me.hidden = true; nickForm(); return; }
+  me.hidden = false; me.textContent = nick;
+  if (!st || st.phase === "lobby") {
+    app.innerHTML = '<div class="card"><span class="badge gold">입장 완료</span><div class="big" style="margin-top:14px">' + esc(nick) + '</div><p class="lead">곧 시작해요.<br>앞 화면을 봐 주세요!</p></div>' +
+      '<p class="small">이 창을 켜 둔 채로 기다려 주세요. <button id="rename">별명 바꾸기</button></p>';
+    document.getElementById("rename").onclick = function () { nick = ""; ls("lpv-nick", ""); render(); };
+    return;
+  }
+  var surv = st.mode === "survival";
+  var alive = isAlive();
+  var survTag = surv ? (alive ? '<span class="badge gold">생존 중</span>' : '<span class="badge">관전 중</span>') : "";
+  if (st.phase === "intro") {
+    app.innerHTML = '<div class="card"><span class="badge">서바이벌</span><h1 style="margin-top:14px">적게 고른 쪽은 탈락!</h1><p class="lead">많은 사람이 고를 것 같은 쪽을 고르세요.<br>투표 안 하면 탈락이에요.</p><div style="margin-top:16px">' + survTag + '</div></div>';
+    return;
+  }
+  if (st.phase === "final") {
+    var win = alive && st.alive && st.alive.length > 0;
+    app.innerHTML = '<div class="card"><span class="badge">서바이벌 끝</span><div class="result ' + (win ? "alive" : "dead") + '" style="margin-top:16px">' + (win ? "최후의 생존!" : "수고했어요") + '</div><p class="lead">' + (win ? "앞으로 나와 주세요!" : "우승자에게 박수!") + '</p></div>';
+    return;
+  }
+  var key = st.g + ":" + st.q.id;
+  var mine = myVotes[key];
+  var head = '<div style="display:flex;gap:8px;justify-content:center;align-items:center"><span class="badge">' + esc(st.label) + '</span>' + survTag + '</div>';
+  if (st.phase === "open") {
+    var dis = surv && !alive;
+    app.innerHTML = head +
+      '<div class="choices">' +
+      '<button class="ch a' + (mine === "A" ? " on" : mine ? " off" : "") + '" id="ca"' + (dis ? " disabled" : "") + '><span class="tag">A</span>' + esc(st.q.a) + '</button>' +
+      '<button class="ch b' + (mine === "B" ? " on" : mine ? " off" : "") + '" id="cb"' + (dis ? " disabled" : "") + '><span class="tag">B</span>' + esc(st.q.b) + '</button>' +
+      '</div><div class="status" id="status"></div>';
+    document.getElementById("ca").onclick = function () { vote("A"); };
+    document.getElementById("cb").onclick = function () { vote("B"); };
+    if (dis) document.getElementById("status").textContent = "탈락해서 관전 중이에요. 응원해 주세요!";
+    else if (mine) renderStatus();
+    else { sendState = ""; document.getElementById("status").textContent = "하나를 눌러 주세요"; }
+    return;
+  }
+  var pick = mine === "A" ? st.q.a : mine === "B" ? st.q.b : "";
+  var pickHtml = pick ? '<p class="lead">내 선택: <b style="color:' + (mine === "A" ? "var(--red)" : "var(--blue)") + '">' + esc(pick) + '</b></p>' : '<p class="lead">이번엔 투표하지 않았어요.</p>';
+  if (st.phase === "closed") {
+    app.innerHTML = head + '<div class="card"><div class="big">마감!</div>' + pickHtml + '<p class="lead">앞 화면을 봐 주세요.</p></div>';
+    return;
+  }
+  // revealed / judged
+  var r = st.res || { A: 0, B: 0 };
+  var tot = r.A + r.B, pa = tot ? Math.round(r.A / tot * 100) : 50;
+  var split = '<div class="split"><div class="sa" style="width:' + pa + '%">' + (pa >= 15 ? pa + "%" : "") + '</div><div class="sb" style="width:' + (100 - pa) + '%">' + (100 - pa >= 15 ? (100 - pa) + "%" : "") + '</div></div>';
+  var line;
+  if (surv && st.phase === "judged") {
+    line = alive ? '<div class="result alive">생존!</div>' : '<div class="result dead">탈락…</div><p class="lead">이제부터 응원단이에요.</p>';
+  } else if (!mine) {
+    line = '<div class="big">결과 발표</div>';
+  } else if (r.A === r.B) {
+    line = '<div class="big">동점!</div>';
+  } else {
+    var major = r.A > r.B ? "A" : "B";
+    line = mine === major ? '<div class="big">나는 다수파</div>' : '<div class="big" style="color:var(--red)">나는 소수파!</div><p class="lead">마이크가 갈 수도 있어요.</p>';
+  }
+  app.innerHTML = head + '<div class="card">' + line + pickHtml + split + '</div>';
+}
+
+render();
+NET.listen(G.ctrlTopic, "6h", function (m) {
+  if (m.t !== "state") return;
+  if (st && m.seq && st.g === m.g && m.seq < st.seq) return; // 늦게 온 옛 상태는 버려요
+  if (!st || st.phase !== m.phase || !st.q || !m.q || st.q.id !== m.q.id) sendState = "";
+  st = m; join(); render();
+}, function (ok) { document.getElementById("conn").style.display = ok ? "none" : "block"; });
+if (NET.LOCAL) NET.send(G.voteTopic, { t: "hello" });
+</script>
+</body>
+</html>

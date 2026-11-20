@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>송년회 투표 화면</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+:root{--ink:#1d2433;--sub:#4a5568;--slate:#e8eef5;--slate2:#d5dfeb;--line:#c9d3e0;--red:#d7263d;--redbg:#fde8eb;--blue:#1f5fbf;--bluebg:#e6effc;--gold:#f2b705}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#141a26}
+body{font-family:"Pretendard Variable",Pretendard,"Malgun Gothic",sans-serif;color:var(--ink);word-break:keep-all;cursor:default}
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slate);overflow:hidden}
+#stage::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,transparent 0 46px,rgba(29,36,51,.035) 46px 92px);pointer-events:none}
+.top{position:absolute;left:0;right:0;top:0;height:96px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 56px;z-index:2}
+.top .t{font-size:38px;font-weight:800;letter-spacing:-.5px}
+.top .t b{color:var(--gold)}
+.top .cnt{font-size:36px;font-weight:700}
+.top .cnt b{font-size:46px;color:var(--gold);margin:0 6px}
+.scr{position:absolute;left:0;right:0;top:96px;bottom:0;padding:44px 72px}
+/* 대기 화면 */
+.lobby{display:flex;gap:64px;height:100%}
+.lobby .l{flex:1;display:flex;flex-direction:column;justify-content:center}
+.kick{display:inline-block;align-self:flex-start;background:var(--red);color:#fff;font-size:34px;font-weight:800;border-radius:99px;padding:8px 28px}
+.lobby h1{font-size:190px;line-height:1.02;font-weight:900;letter-spacing:-4px;margin:22px 0 30px}
+.steps{list-style:none;font-size:46px;font-weight:700;line-height:1.6}
+.steps li span{display:inline-flex;width:62px;height:62px;border-radius:50%;background:var(--ink);color:#fff;align-items:center;justify-content:center;font-size:36px;margin-right:18px;vertical-align:4px}
+.note{margin-top:26px;font-size:36px;font-weight:700;color:var(--red)}
+.lobby .r{width:640px;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.qr{background:#fff;border:8px solid var(--ink);border-radius:36px;padding:34px;width:600px;height:600px}
+.qr svg{width:100%;height:100%;display:block}
+.url{margin-top:22px;font-size:34px;font-weight:800;background:#fff;border:4px solid var(--ink);border-radius:99px;padding:10px 30px}
+.joined{position:absolute;left:72px;right:72px;bottom:34px;display:flex;align-items:center;gap:16px;overflow:hidden;height:64px}
+.joined .lab{flex:none;font-size:32px;font-weight:800}
+.chip{flex:none;background:#fff;border:3px solid var(--ink);border-radius:99px;padding:6px 20px;font-size:28px;font-weight:700;animation:pop .35s ease-out}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+/* 질문 화면 */
+.qhead{display:flex;align-items:center;gap:24px;height:84px}
+.qno{background:var(--ink);color:#fff;font-size:44px;font-weight:900;border-radius:20px;padding:8px 30px}
+.qmode{font-size:40px;font-weight:800;color:var(--sub)}
+.duel{position:relative;transition:transform .5s;display:flex;justify-content:space-between;margin-top:30px;height:520px}
+.bub{position:relative;width:790px;height:500px;background:#fff;border:7px solid var(--ink);border-radius:56px;display:flex;align-items:center;justify-content:center;padding:60px 56px 40px;text-align:center;font-size:82px;font-weight:900;line-height:1.18;letter-spacing:-2px;transition:transform .5s cubic-bezier(.2,1.4,.4,1),opacity .4s,border-color .3s}
+.bub::after{content:"";position:absolute;bottom:-52px;width:70px;height:70px;background:#fff;border:7px solid var(--ink);border-top:0;border-left:0}
+.bub.a::after{left:110px;transform:rotate(45deg) skew(12deg,12deg);bottom:-38px}
+.bub.b::after{right:110px;transform:rotate(45deg) skew(12deg,12deg);bottom:-38px}
+.bub.a{background:var(--redbg)} .bub.a::after{background:var(--redbg)}
+.bub.b{background:var(--bluebg)} .bub.b::after{background:var(--bluebg)}
+.bub .tag{position:absolute;top:-44px;left:50%;transform:translateX(-50%);width:96px;height:96px;border-radius:50%;color:#fff;font-size:56px;font-weight:900;display:flex;align-items:center;justify-content:center;border:7px solid var(--ink)}
+.bub.a .tag{background:var(--red)} .bub.b .tag{background:var(--blue)}
+.bub.win{transform:scale(1.05);border-color:var(--gold)}
+.bub.win.a{background:var(--red);color:#fff} .bub.win.a::after{background:var(--red);border-color:var(--gold)}
+.bub.win.b{background:var(--blue);color:#fff} .bub.win.b::after{background:var(--blue);border-color:var(--gold)}
+.bub.lose{opacity:.5;transform:scale(.95)}
+.stamp{position:absolute;top:26px;right:30px;font-size:40px;font-weight:900;background:var(--gold);color:var(--ink);border-radius:16px;padding:4px 18px;transform:rotate(6deg);animation:pop .4s}
+.vs{position:absolute;left:50%;top:205px;transform:translateX(-50%);width:170px;height:170px;border-radius:50%;background:var(--ink);color:var(--gold);font-size:70px;font-weight:900;display:flex;align-items:center;justify-content:center;border:8px solid var(--slate);z-index:1;font-style:italic}
+.foot{position:absolute;left:72px;right:72px;bottom:40px;height:170px;display:flex;flex-direction:column;justify-content:flex-end}
+.prog{display:flex;align-items:center;gap:30px;font-size:44px;font-weight:800}
+.prog .bar{flex:1;height:44px;background:#fff;border:5px solid var(--ink);border-radius:99px;overflow:hidden}
+.prog .bar i{display:block;height:100%;background:var(--ink);transition:width .3s}
+.prog b{font-size:60px}
+.closed-tag{font-size:60px;font-weight:900;color:var(--red);text-align:center}
+.split{flex:none;display:flex;height:130px;border:7px solid var(--ink);border-radius:32px;overflow:hidden;color:#fff;font-weight:900}
+.split div{display:flex;align-items:center;justify-content:center;gap:20px;transition:width 1.1s cubic-bezier(.2,.9,.3,1);min-width:0;white-space:nowrap;overflow:hidden}
+.split .sa{background:var(--red)} .split .sb{background:var(--blue)}
+.split big{font-size:84px} .split small{font-size:38px;font-weight:700}
+.drum{font-size:96px;font-weight:900;text-align:center;letter-spacing:6px;animation:shake .12s infinite alternate}
+@keyframes shake{from{transform:translateX(-6px) rotate(-1deg)}to{transform:translateX(6px) rotate(1deg)}}
+.count{position:absolute;left:50%;top:-10px;transform:translateX(-50%);width:200px;height:200px;border-radius:50%;background:var(--red);color:#fff;font-size:120px;font-weight:900;display:flex;align-items:center;justify-content:center;border:8px solid var(--ink);z-index:3}
+.mic{display:flex;align-items:center;gap:20px;margin-top:22px;font-size:40px;font-weight:800;justify-content:center}
+.mic .chip{font-size:40px;padding:8px 28px;border-width:4px}
+.mic svg{width:52px;height:52px}
+/* 서바이벌 */
+.intro{display:flex;flex-direction:column;justify-content:center;height:100%}
+.intro h1{font-size:170px;font-weight:900;letter-spacing:-5px;line-height:1}
+.intro h2{font-size:84px;font-weight:900;color:var(--red);margin:26px 0 34px}
+.judge{position:absolute;left:72px;right:72px;bottom:36px;display:flex;align-items:center;justify-content:center;gap:40px;font-size:64px;font-weight:900}
+.judge .dead{color:#fff;background:var(--red);border-radius:24px;padding:10px 36px;animation:pop .4s}
+.judge .live{background:var(--ink);color:var(--gold);border-radius:24px;padding:10px 36px}
+.alive-list{position:absolute;left:72px;right:72px;bottom:150px;display:flex;flex-wrap:wrap;justify-content:center;gap:14px}
+.alive-list .chip{font-size:44px;padding:8px 28px;border-width:4px}
+.final{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center}
+.final .kick{align-self:center}
+.final h1{font-size:150px;font-weight:900;letter-spacing:-4px;margin:30px 0}
+.final .names{display:flex;flex-wrap:wrap;justify-content:center;gap:24px;max-width:1700px}
+.final .names div{background:#fff;border:8px solid var(--ink);border-radius:30px;padding:14px 44px;font-size:96px;font-weight:900;animation:pop .6s}
+canvas#fx{position:absolute;inset:0;pointer-events:none;z-index:5}
+/* 진행자 막대(빔에 보여도 되지만 마우스를 멈추면 숨어요) */
+#bar{position:fixed;left:0;right:0;bottom:0;background:rgba(20,26,38,.94);color:#fff;padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:15px;transition:opacity .3s;z-index:10}
+#bar.hide{opacity:0;pointer-events:none}
+#bar button{font:inherit;font-weight:700;background:#2c3548;color:#fff;border:1px solid #47536b;border-radius:8px;padding:7px 12px;cursor:pointer}
+#bar button:hover,#bar button:focus{background:#3d4a63;outline:2px solid var(--gold)}
+#bar button.main{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+#bar button.warn{background:var(--red);border-color:var(--red)}
+#bar .sp{flex:1}
+#bar .hint{color:#c9d3e0;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:20}
+#dlg form{background:#fff;border-radius:16px;padding:24px;width:min(560px,92vw);display:flex;flex-direction:column;gap:10px;font-size:18px}
+#dlg input{font:inherit;font-size:22px;padding:10px;border:2px solid var(--ink);border-radius:10px}
+#dlg .row{display:flex;gap:10px;justify-content:flex-end}
+#dlg button{font:inherit;font-weight:700;padding:10px 18px;border-radius:10px;border:0;background:var(--ink);color:#fff}
+#dlg button[type=button]{background:var(--slate2);color:var(--ink)}
+#conn{position:fixed;top:10px;right:10px;background:var(--red);color:#fff;font-weight:700;padding:6px 12px;border-radius:8px;display:none;z-index:11}
+</style>
+</head>
+<body>
+<div id="stage"><div class="top"><div class="t" id="ttl"></div><div class="cnt" id="cnt"></div></div><div class="scr" id="scr"></div><canvas id="fx" width="1920" height="1080"></canvas></div>
+<div id="bar">
+  <button class="main" id="bNext">다음 ▶</button>
+  <button id="bRev" class="warn" hidden>반전! 많이 고른 쪽 탈락</button>
+  <button id="bCount">10초 세기</button>
+  <button id="bSkip">이 질문 건너뛰기</button>
+  <button id="bPrev">이전 질문 다시</button>
+  <button id="bCustom">즉석 질문</button>
+  <button id="bUndo">판정 되돌리기</button>
+  <span class="hint" id="hint"></span>
+  <span class="sp"></span>
+  <button id="bBal">밸런스 게임</button>
+  <button id="bSur">서바이벌 시작</button>
+  <button id="bEnd">서바이벌 끝내기</button>
+  <button id="bQR">QR 화면</button>
+  <button id="bSnd">소리 켬</button>
+  <button id="bFull">전체 화면</button>
+  <button id="bReset">새 게임</button>
+</div>
+<div id="dlg"><form id="cf"><b>즉석 질문 (둘 중 하나)</b><input id="ca" placeholder="A (빨강)" required maxlength="30"><input id="cb" placeholder="B (파랑)" required maxlength="30"><div class="row"><button type="button" id="cc">취소</button><button>바로 투표 시작</button></div></form></div>
+<div id="conn">연결 끊김 · 다시 붙는 중</div>
+<script src="config.js"></script>
+<script src="net.js"></script>
+<script>
+var G = window.GAME;
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+$("ttl").innerHTML = esc(G.title).replace(/^(\d{4})/, "<b>$1</b>");
+
+// ---------- 화면 크기 맞추기 ----------
+function fit() {
+  var s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  $("stage").style.transform = "translate(-50%,-50%) scale(" + s + ")";
+}
+addEventListener("resize", fit); fit();
+
+// ---------- 상태(진행자 노트북에만 저장) ----------
+var KEY = "lpv-board";
+function newGame() {
+  return { g: Math.random().toString(36).slice(2, 8), start: Math.floor(Date.now() / 1000) - 5, seq: 0,
+    mode: "balance", idx: { balance: 0, survival: 0 }, phase: "lobby", q: null, label: "", qno: 0,
+    players: {}, order: [], votes: {}, alive: null, prevAlive: null, res: null, pick: [], sound: true };
+}
+var S; try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+if (!S || !S.g) S = newGame();
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+function publish() {
+  S.seq++; save();
+  var m = { t: "state", g: S.g, seq: S.seq, phase: S.phase, mode: S.mode, label: S.label,
+    q: S.q, res: S.res, alive: S.mode === "survival" && S.phase !== "lobby" ? S.alive : null };
+  NET.send(G.ctrlTopic, m);
+}
+
+// ---------- 소리(스피커) ----------
+var AC = null;
+function ac() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === "suspended") AC.resume(); return AC; }
+function tone(f, d, type, vol, at, f2) {
+  var c = ac(); if (!c || !S.sound) return;
+  var t = c.currentTime + (at || 0), o = c.createOscillator(), g = c.createGain();
+  o.type = type || "triangle"; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || .3, t + .01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + d + .05);
+}
+function noise(d, vol, at, rollHz) {
+  var c = ac(); if (!c || !S.sound) return;
+  var len = Math.floor(c.sampleRate * d), buf = c.createBuffer(1, len, c.sampleRate), x = buf.getChannelData(0);
+  for (var i = 0; i < len; i++) {
+    var env = rollHz ? (0.35 + 0.65 * Math.abs(Math.sin(Math.PI * rollHz * i / c.sampleRate))) * (0.4 + 0.6 * i / len) : Math.pow(1 - i / len, 3);
+    x[i] = (Math.random() * 2 - 1) * env;
+  }
+  var s = c.createBufferSource(), g = c.createGain(), f = c.createBiquadFilter();
+  f.type = rollHz ? "bandpass" : "highpass"; f.frequency.value = rollHz ? 900 : 3000;
+  g.gain.value = vol; s.buffer = buf; s.connect(f); f.connect(g); g.connect(c.destination); s.start(c.currentTime + (at || 0));
+}
+var SND = {
+  open: function () { tone(660, .15, "square", .18); tone(990, .3, "square", .18, .12); },
+  tick: function (hi) { tone(hi ? 1320 : 990, .08, "square", .2); },
+  close: function () { tone(180, .55, "sawtooth", .25); tone(120, .55, "square", .15); },
+  drum: function (d) { noise(d, .9, 0, 14); tone(70, d, "sine", .25); },
+  fanfare: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, i == 3 ? .6 : .16, "triangle", .3, i * .13); }); noise(.9, .35, .39); },
+  elim: function () { tone(880, .7, "sawtooth", .18, 0, 110); tone(660, .7, "square", .1, .08, 90); },
+  win: function () { [523, 659, 784, 1047, 784, 1047, 1319].forEach(function (f, i) { tone(f, i == 6 ? 1 : .18, "triangle", .3, i * .15); }); noise(1.4, .4, .9); },
+  join: function () { tone(1200, .06, "sine", .08); }
+};
+
+// ---------- 질문 고르기 ----------
+function list() { return G[S.mode]; }
+function counts() {
+  var v = S.q ? (S.votes[S.q.id] || {}) : {}, a = 0, b = 0;
+  for (var p in v) { if (v[p] === "A") a++; else b++; }
+  return { A: a, B: b };
+}
+function eligible() { return S.mode === "survival" && S.alive ? S.alive.length : S.order.length; }
+
+function openQ(q) {
+  S.qno++;
+  S.q = { id: "q" + S.g + S.seq + "-" + S.qno, a: q.a, b: q.b };
+  S.label = S.mode === "survival" ? "ROUND " + S.qno : "Q" + S.qno;
+  S.votes[S.q.id] = {}; S.res = null; S.pick = []; S.phase = "open";
+  stopCount(); SND.open(); publish(); render();
+}
+function openNext() {
+  var L = list();
+  if (S.idx[S.mode] >= L.length) { S.idx[S.mode] = 0; toast("준비한 질문을 다 썼어요. 처음 질문부터 다시 나와요"); }
+  openQ(L[S.idx[S.mode]++]);
+}
+
+// ---------- 단계 진행 ----------
+var revealing = false;
+function next() {
+  if (revealing) return;
+  if (S.phase === "lobby") { if (S.mode === "survival") startSurvival(); else openNext(); }
+  else if (S.phase === "intro") openNext();
+  else if (S.phase === "open") closeQ();
+  else if (S.phase === "closed") reveal();
+  else if (S.phase === "revealed") { if (S.mode === "survival") judge("major"); else openNext(); }
+  else if (S.phase === "judged") { if (S.alive.length <= 1) finish(); else openNext(); }
+}
+function closeQ() { stopCount(); S.phase = "closed"; SND.close(); publish(); render(); }
+function reveal() {
+  var c = counts(); S.res = { A: c.A, B: c.B };
+  S.pick = [];
+  if (S.mode === "balance" && c.A !== c.B) {
+    var minor = c.A < c.B ? "A" : "B", v = S.votes[S.q.id], ids = [];
+    for (var p in v) if (v[p] === minor) ids.push(p);
+    ids.sort(function () { return Math.random() - .5; });
+    S.pick = ids.slice(0, 3).map(function (p) { return S.players[p] || "?"; });
+  }
+  revealing = true; S.phase = "revealed"; save();
+  render(true); SND.drum(1.8);
+  setTimeout(function () { revealing = false; SND.fanfare(); publish(); render(); }, 1800);
+}
+function judge(rule) {
+  var c = S.res, v = S.votes[S.q.id], before = S.alive.slice(), win;
+  if (c.A === c.B) win = null; else win = rule === "major" ? (c.A > c.B ? "A" : "B") : (c.A < c.B ? "A" : "B");
+  var voters = before.filter(function (p) { return v[p]; });
+  var keep = win ? voters.filter(function (p) { return v[p] === win; }) : voters;
+  if (!keep.length) keep = voters.length ? voters : before; // 전원 탈락은 막아요
+  S.prevAlive = before; S.alive = keep;
+  S.res = { A: c.A, B: c.B, rule: rule, win: win, elim: before.length - keep.length };
+  S.phase = "judged"; if (S.res.elim) SND.elim(); else SND.fanfare();
+  publish(); render();
+}
+function undo() {
+  if (S.phase !== "judged" || !S.prevAlive) return toast("되돌릴 판정이 없어요");
+  S.alive = S.prevAlive; S.prevAlive = null; S.res = { A: S.res.A, B: S.res.B }; S.phase = "revealed";
+  publish(); render(); toast("판정을 되돌렸어요. 다시 고르세요");
+}
+function startSurvival() {
+  S.mode = "survival"; S.alive = S.order.slice(); S.prevAlive = null; S.qno = 0; S.q = null; S.res = null;
+  S.phase = "intro"; SND.fanfare(); publish(); render();
+}
+function finish() {
+  if (S.mode !== "survival" || !S.alive) return;
+  S.phase = "final"; SND.win(); publish(); render(); confetti();
+}
+function toLobby(mode) {
+  stopCount(); S.mode = mode || S.mode; S.phase = "lobby"; S.q = null; S.res = null;
+  if (S.mode === "balance") S.qno = 0;
+  publish(); render();
+}
+
+// ---------- 10초 세기 ----------
+var cdT = null, cdN = 0;
+function startCount() {
+  if (S.phase !== "open") return toast("투표 중일 때만 셀 수 있어요");
+  stopCount(); cdN = G.countdown; drawCount(); SND.tick();
+  cdT = setInterval(function () {
+    cdN--; if (cdN <= 0) { stopCount(); closeQ(); return; }
+    drawCount(); SND.tick(cdN <= 3);
+  }, 1000);
+}
+function stopCount() { if (cdT) clearInterval(cdT); cdT = null; var e = $("cd"); if (e) e.remove(); }
+function drawCount() {
+  var e = $("cd"); if (!e) { e = document.createElement("div"); e.id = "cd"; e.className = "count"; var d = document.querySelector(".duel"); if (d) d.appendChild(e); }
+  e.textContent = cdN;
+}
+
+// ---------- 그리기 ----------
+var MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>';
+function header() {
+  var n = S.order.length;
+  if (S.mode === "survival" && S.alive && S.phase !== "lobby") $("cnt").innerHTML = "생존<b>" + S.alive.length + "</b>/ " + n + "명";
+  else $("cnt").innerHTML = "참가<b>" + n + "</b>명";
+}
+function qrSvg() {
+  try { var q = qrcode(0, "M"); q.addData(G.phoneUrl); q.make(); return q.createSvgTag({ cellSize: 8, margin: 0, scalable: true }); }
+  catch (e) { return '<div style="font-size:30px;padding:40px">QR을 못 그렸어요<br>인터넷 연결 확인</div>'; }
+}
+function render(drumming) {
+  header(); hint();
+  var h = "";
+  if (S.phase === "lobby") {
+    var ttl = S.mode === "survival" ? "서바이벌" : "밸런스<br>게임";
+    h = '<div class="lobby"><div class="l"><span class="kick">실시간 투표 게임</span><h1>' + ttl + '</h1>' +
+      '<ol class="steps"><li><span>1</span>QR 찍기</li><li><span>2</span>별명 입력</li><li><span>3</span>둘 중 하나 누르기</li></ol>' +
+      '<div class="note">와이파이 끄고 휴대폰 데이터로 접속해 주세요</div></div>' +
+      '<div class="r"><div class="qr">' + qrSvg() + '</div><div class="url">' + esc(G.phoneUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")) + '</div></div></div>' +
+      '<div class="joined" id="joined"><span class="lab">들어온 사람</span></div>';
+    $("scr").innerHTML = h; drawJoined(); return;
+  }
+  if (S.phase === "intro") {
+    h = '<div class="intro"><span class="kick">서바이벌</span><h1>적게 고르면 탈락!</h1><h2>많은 사람이 고를 쪽을 맞혀요</h2>' +
+      '<ol class="steps"><li><span>1</span>둘 중 하나 누르기</li><li><span>2</span>적게 고른 쪽은 탈락</li><li><span>3</span>투표 안 해도 탈락</li></ol>' +
+      '<div class="note" style="font-size:44px">도전자 ' + S.alive.length + '명 · 마지막까지 남으면 우승!</div></div>';
+    $("scr").innerHTML = h; return;
+  }
+  if (S.phase === "final") {
+    var names = S.alive.map(function (p) { return "<div>" + esc(S.players[p] || "?") + "</div>"; }).join("");
+    h = '<div class="final"><span class="kick">서바이벌 끝</span><h1>최후의 생존자</h1><div class="names">' + names + '</div></div>';
+    $("scr").innerHTML = h; return;
+  }
+  // 질문 화면(open / closed / revealed / judged)
+  var c = S.res || counts(), shown = (S.phase === "revealed" && !drumming) || S.phase === "judged";
+  var win = shown && c.A !== c.B ? (c.A > c.B ? "A" : "B") : "";
+  var cls = function (k) { return !shown || !win ? "" : (k === win ? " win" : " lose"); };
+  var stamp = function (k) { return shown && win === k ? '<span class="stamp">많이 고름</span>' : shown && !win ? '<span class="stamp">동점</span>' : ""; };
+  h = '<div class="qhead"><span class="qno">' + esc(S.label) + '</span><span class="qmode">' + (S.mode === "survival" ? "서바이벌 · 적게 고르면 탈락" : "밸런스 게임 · 둘 중 하나!") + '</span></div>' +
+    '<div class="duel"><div class="bub a' + cls("A") + '"><span class="tag">A</span>' + esc(S.q.a) + stamp("A") + '</div><div class="vs">VS</div>' +
+    '<div class="bub b' + cls("B") + '"><span class="tag">B</span>' + esc(S.q.b) + stamp("B") + '</div></div>';
+  if (S.phase === "open") {
+    h += '<div class="foot"><div class="prog"><span>투표</span><div class="bar"><i id="pbar"></i></div><span><b id="pn">0</b> / <span id="pt">0</span>명</span></div></div>';
+  } else if (S.phase === "closed") {
+    h += '<div class="foot"><div class="closed-tag">투표 마감! 결과는…?</div><div class="prog" style="margin-top:14px;justify-content:center"><span>모두 <b>' + (c.A + c.B) + '</b>명 투표</span></div></div>';
+  } else if (drumming) {
+    h += '<div class="foot"><div class="drum">두 구 두 구 두 구</div></div>';
+  } else {
+    var tot = c.A + c.B, pa = tot ? Math.round(c.A / tot * 100) : 50, pb = 100 - pa;
+    var bar = '<div class="split"><div class="sa" style="width:50%">' + (pa >= 12 ? '<big>' + pa + '%</big><small>' + c.A + '명</small>' : "") + '</div><div class="sb" style="width:50%">' + (pb >= 12 ? '<big>' + pb + '%</big><small>' + c.B + '명</small>' : "") + '</div></div>';
+    var extra = "";
+    if (S.mode === "balance" && S.pick.length) extra = '<div class="mic">' + MIC + '<span>소수파 인터뷰</span>' + S.pick.map(function (n) { return '<span class="chip">' + esc(n) + '</span>'; }).join("") + '</div>';
+    if (S.mode === "survival" && S.phase === "revealed") extra = '<div class="mic"><span>누가 탈락할까요?</span></div>';
+    var footH = S.phase === "judged" ? "bottom:150px" : "";
+    h += '<div class="foot" style="' + footH + '">' + bar + extra + '</div>';
+    if (S.phase === "judged") {
+      var r = S.res;
+      h += '<div class="judge">' + (r.rule === "minor" ? '<span class="dead" style="background:var(--gold);color:var(--ink)">반전! 많이 고른 쪽 탈락</span>' : "") +
+        (r.elim ? '<span class="dead">탈락 ' + r.elim + '명</span>' : '<span class="live">전원 생존!</span>') + '<span class="live">생존 ' + S.alive.length + '명</span></div>';
+    }
+    $("scr").innerHTML = h;
+    if (S.phase === "judged") { document.querySelector(".foot").style.bottom = "150px"; var du = document.querySelector(".duel"); du.style.transformOrigin = "top center"; du.style.transform = "scale(.86)"; }
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      var a = document.querySelector(".split .sa"), b = document.querySelector(".split .sb");
+      if (a) { a.style.width = pa + "%"; b.style.width = pb + "%"; }
+    }); });
+    if (S.phase === "judged" && S.alive.length <= 12) {
+      var al = document.createElement("div"); al.className = "alive-list";
+      al.innerHTML = S.alive.map(function (p) { return '<span class="chip">' + esc(S.players[p] || "?") + '</span>'; }).join("");
+      $("scr").appendChild(al);
+      document.querySelector(".foot").style.bottom = "250px";
+      document.querySelector(".duel").style.transform = "scale(.74)";
+    }
+    return;
+  }
+  $("scr").innerHTML = h; liveCount();
+}
+function liveCount() {
+  if (S.phase !== "open") return;
+  var c = counts(), n = c.A + c.B, t = Math.max(eligible(), n);
+  if ($("pn")) { $("pn").textContent = n; $("pt").textContent = t; $("pbar").style.width = (t ? n / t * 100 : 0) + "%"; }
+}
+function drawJoined() {
+  var j = $("joined"); if (!j) return;
+  var last = S.order.slice(-14).reverse();
+  j.innerHTML = '<span class="lab">들어온 사람 ' + S.order.length + '명</span>' + last.map(function (p) { return '<span class="chip">' + esc(S.players[p]) + '</span>'; }).join("");
+}
+function hint() {
+  var t = { lobby: S.mode === "survival" ? "다음: 서바이벌 규칙 화면" : "다음: 첫 질문 투표 시작", intro: "다음: ROUND 1 시작", open: "다음: 투표 마감", closed: "다음: 결과 공개(두구두구)",
+    revealed: S.mode === "survival" ? "다음: 적게 고른 쪽 탈락 / 빨간 버튼: 반전" : "다음: 다음 질문", judged: S.alive && S.alive.length <= 1 ? "다음: 우승자 발표" : "다음: 다음 라운드", final: "끝! 새 판은 [서바이벌 시작]" }[S.phase] || "";
+  var L = list(), nq = L[S.idx[S.mode] % L.length];
+  if (/lobby|intro|revealed|judged/.test(S.phase) && !(S.mode === "survival" && S.phase === "revealed")) t += " · 다음 질문: " + nq.a + " vs " + nq.b;
+  $("hint").textContent = t;
+  $("bRev").hidden = !(S.mode === "survival" && S.phase === "revealed");
+  $("bEnd").hidden = S.mode !== "survival" || S.phase === "lobby" || S.phase === "final";
+  $("bUndo").hidden = S.phase !== "judged";
+  $("bCount").hidden = S.phase !== "open";
+  $("bSnd").textContent = S.sound ? "소리 켬" : "소리 끔";
+}
+function toast(msg) {
+  var e = document.createElement("div");
+  e.textContent = msg; e.style.cssText = "position:fixed;left:50%;top:20px;transform:translateX(-50%);background:#1d2433;color:#fff;font-weight:700;font-size:18px;padding:10px 18px;border-radius:10px;z-index:30";
+  document.body.appendChild(e); setTimeout(function () { e.remove(); }, 2600);
+}
+
+// ---------- 꽃가루 ----------
+function confetti() {
+  var cv = $("fx"), x = cv.getContext("2d"), P = [], cols = ["#d7263d", "#1f5fbf", "#f2b705", "#ffffff"];
+  for (var i = 0; i < 260; i++) P.push({ x: Math.random() * 1920, y: -Math.random() * 900, w: 12 + Math.random() * 14, h: 8 + Math.random() * 10, vy: 4 + Math.random() * 6, vx: -2 + Math.random() * 4, r: Math.random() * 6, vr: -.2 + Math.random() * .4, c: cols[i % 4] });
+  var t0 = performance.now();
+  (function f(t) {
+    x.clearRect(0, 0, 1920, 1080);
+    P.forEach(function (p) { p.y += p.vy; p.x += p.vx; p.r += p.vr; x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c; x.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); x.restore(); });
+    if (t - t0 < 7000) requestAnimationFrame(f); else x.clearRect(0, 0, 1920, 1080);
+  })(t0);
+}
+
+// ---------- 휴대폰에서 오는 표 받기 ----------
+var rT = null;
+function soon(fn) { if (rT) return; rT = setTimeout(function () { rT = null; fn(); }, 120); }
+function addPlayer(p, n) {
+  if (!p) return false;
+  var isNew = !S.players[p];
+  S.players[p] = String(n || "?").slice(0, G.nickMax);
+  if (isNew) S.order.push(p);
+  return isNew;
+}
+NET.listen(G.voteTopic, S.start, function (m) {
+  if (m.t === "hello") { if (NET.LOCAL) { S.seq--; publish(); } return; }
+  if (m.g && m.g !== S.g) return;
+  if (m.t === "j") {
+    var isNew = addPlayer(m.p, m.n); save();
+    if (isNew && S.phase === "lobby") { soon(function () { drawJoined(); header(); }); SND.join(); }
+    else soon(header);
+  } else if (m.t === "v") {
+    if (!m.g) return;
+    addPlayer(m.p, m.n);
+    if (S.phase !== "open" || !S.q || m.q !== S.q.id) { save(); return; }
+    if (S.mode === "survival" && S.alive && S.alive.indexOf(m.p) < 0) return;
+    if (m.c !== "A" && m.c !== "B") return;
+    S.votes[S.q.id][m.p] = m.c; save();
+    soon(function () { liveCount(); header(); });
+  }
+}, function (ok) { $("conn").style.display = ok ? "none" : "block"; });
+
+// ---------- 버튼·키 ----------
+function on(id, fn) { $(id).onclick = function (e) { ac(); fn(e); this.blur(); }; }
+on("bNext", next);
+on("bRev", function () { if (S.mode === "survival" && S.phase === "revealed" && !revealing) judge("minor"); });
+on("bCount", startCount);
+on("bSkip", function () { if (S.phase === "open" || S.phase === "closed") { S.votes[S.q.id] = {}; openNext(); } else openNext(); });
+on("bPrev", function () { var L = list(); S.idx[S.mode] = Math.max(0, S.idx[S.mode] - (S.phase === "open" || S.phase === "closed" || S.phase === "revealed" || S.phase === "judged" ? 2 : 1)); if (S.q) S.qno = Math.max(0, S.qno - 1); openNext(); });
+on("bCustom", function () { $("dlg").style.display = "flex"; $("ca").value = ""; $("cb").value = ""; $("ca").focus(); });
+$("cc").onclick = function () { $("dlg").style.display = "none"; };
+$("cf").onsubmit = function (e) { e.preventDefault(); $("dlg").style.display = "none"; openQ({ a: $("ca").value.trim(), b: $("cb").value.trim() }); };
+on("bUndo", undo);
+on("bBal", function () { toLobby("balance"); });
+on("bSur", function () { if (!S.order.length) return toast("아직 들어온 사람이 없어요"); if (S.mode === "survival" && S.phase !== "lobby" && S.phase !== "final" && !confirm("지금 서바이벌을 처음부터 다시 할까요?")) return; startSurvival(); });
+on("bEnd", function () { if (confirm("서바이벌을 끝내고 지금 생존자를 우승자로 발표할까요?")) finish(); });
+on("bQR", function () { toLobby(); });
+on("bSnd", function () { S.sound = !S.sound; save(); hint(); });
+on("bFull", function () { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); });
+on("bReset", function () {
+  if (!confirm("새 게임을 시작할까요? 들어온 사람·투표 기록이 모두 지워지고, 휴대폰은 자동으로 다시 들어와요.")) return;
+  var snd = S.sound; S = newGame(); S.sound = snd; publish(); render(); location.reload();
+});
+addEventListener("keydown", function (e) {
+  if ($("dlg").style.display === "flex") return;
+  ac();
+  if (e.key === " " || e.key === "Enter" || e.key === "PageDown" || e.key === "ArrowRight") { e.preventDefault(); next(); }
+  else if (e.key === "r" || e.key === "R") $("bRev").hidden || $("bRev").click();
+  else if (e.key === "t" || e.key === "T") startCount();
+  else if (e.key === "n" || e.key === "N") $("bCustom").click();
+  else if (e.key === "f" || e.key === "F") $("bFull").click();
+});
+var hideT = null;
+function showBar() { $("bar").classList.remove("hide"); document.body.style.cursor = "default"; clearTimeout(hideT); hideT = setTimeout(function () { if (!$("bar").matches(":hover")) { $("bar").classList.add("hide"); document.body.style.cursor = "none"; } }, 3000); }
+addEventListener("mousemove", showBar); showBar();
+
+// 처음 열 때: 발표 도중에 새로고침했으면 결과 화면으로
+if (S.phase === "revealed" && !S.res) S.phase = "closed";
+publish(); render();
+</script>
+</body>
+</html>

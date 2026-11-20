@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>모의 참가자</title></head>
+<body style="font:16px sans-serif;padding:20px">
+<h3>모의 참가자 (시험용 · board.html?local=1 과 같은 브라우저에서)</h3>
+<p>주소 예: sim.html?local=1&amp;n=60&amp;bias=0.65</p>
+<pre id="log"></pre>
+<script src="config.js"></script>
+<script src="net.js"></script>
+<script>
+var G = window.GAME, qs = new URLSearchParams(location.search);
+var N = +qs.get("n") || 60, BIAS = +(qs.get("bias") || 0.6), SKIP = +(qs.get("skip") || 0.03);
+var names = ["고기왕","막내리더","커피중독","칼퇴요정","콜센터장","분석왕","미소천사","야근장인","회식반장","노래방왕"];
+var P = []; for (var i = 0; i < N; i++) P.push({ p: "s" + i.toString(36), n: names[i % 10] + (i >= 10 ? i : "") });
+var st = null, voted = {}, joined = "";
+function log(s) { document.getElementById("log").textContent = s; }
+NET.listen(G.ctrlTopic, "1h", function (m) {
+  if (m.t !== "state") return; st = m;
+  if (joined !== m.g) { joined = m.g; P.forEach(function (x, i) { setTimeout(function () { NET.send(G.voteTopic, { t: "j", g: m.g, p: x.p, n: x.n }); }, i * 15); }); }
+  if (m.phase === "open" && !voted[m.q.id]) {
+    voted[m.q.id] = 1;
+    var lean = Math.random() < .5 ? "A" : "B";
+    P.forEach(function (x, i) {
+      if (m.alive && m.alive.indexOf(x.p) < 0) return;
+      if (Math.random() < SKIP) return;
+      var c = Math.random() < BIAS ? lean : (lean === "A" ? "B" : "A");
+      setTimeout(function () { NET.send(G.voteTopic, { t: "v", g: m.g, p: x.p, n: x.n, q: m.q.id, c: c }); }, 200 + Math.random() * 2500);
+    });
+  }
+  log("상태: " + m.phase + " / " + (m.q ? m.q.a + " vs " + m.q.b : "") + (m.alive ? " / 생존 " + m.alive.length : ""));
+});
+NET.send(G.voteTopic, { t: "hello" });
+</script></body></html>
